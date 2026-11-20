@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Phone, Mail, ArrowLeft, Store, Sprout, Package } from 'lucide-react';
-import { supabase, type Farm, type ListingWithFarm } from '@/lib/supabase';
+import { MapPin, Phone, Mail, ArrowLeft, Store, Sprout, Package, MessageSquare, Heart } from 'lucide-react';
+import { supabase, type Farm, type ListingWithFarm, type Review } from '@/lib/supabase';
 import { type Route } from '@/lib/router';
 import { ListingCard } from '@/components/ListingCard';
+import { ReviewsSection } from '@/components/ReviewsSection';
+import { MessageModal } from '@/components/MessageModal';
+import { WatchButton } from '@/components/WatchButton';
+import { StarRatingDisplay } from '@/components/StarRating';
 
 type Props = {
   id: string;
@@ -12,6 +16,7 @@ type Props = {
 export function FarmProfilePage({ id, onNavigate }: Props) {
   const [farm, setFarm] = useState<Farm | null>(null);
   const [listings, setListings] = useState<ListingWithFarm[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -39,6 +44,14 @@ export function FarmProfilePage({ id, onNavigate }: Props) {
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false });
       if (items) setListings(items as ListingWithFarm[]);
+
+      const { data: revs } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('target_type', 'farm')
+        .eq('target_id', id)
+        .order('created_at', { ascending: false });
+      if (revs) setReviews(revs as Review[]);
       setLoading(false);
     })();
   }, [id]);
@@ -97,13 +110,32 @@ export function FarmProfilePage({ id, onNavigate }: Props) {
               </div>
             )}
           </div>
-          <div className="flex-1 pb-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-stone-800">{farm.name}</h1>
+          <div className="flex-1 pb-2 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-bold text-stone-800">{farm.name}</h1>
+              <div className="w-9 h-9 rounded-full bg-white shadow flex items-center justify-center shrink-0">
+                <WatchButton id={farm.id} type="farm" title={farm.name} subtitle={farm.location} imageUrl={farm.image_url} />
+              </div>
+            </div>
             {farm.location && (
               <p className="text-stone-500 flex items-center gap-1 mt-1">
                 <MapPin className="w-4 h-4" /> {farm.location}
               </p>
             )}
+            {reviews.length > 0 && (
+              <div className="flex items-center gap-2 mt-1">
+                <StarRatingDisplay rating={reviews.reduce((s, r) => s + r.rating, 0) / reviews.length} size={16} />
+                <span className="text-sm text-stone-500">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
+              </div>
+            )}
+          </div>
+          <div className="pb-2">
+            <MessageModal
+              farmId={farm.id}
+              farmName={farm.name}
+              triggerLabel="Message Farm"
+              triggerClassName="flex items-center gap-2 px-4 py-2.5 bg-green-700 text-white rounded-lg text-sm font-semibold hover:bg-green-800 transition-colors"
+            />
           </div>
         </div>
 
@@ -111,7 +143,7 @@ export function FarmProfilePage({ id, onNavigate }: Props) {
           <p className="text-stone-600 leading-relaxed mb-6 max-w-2xl">{farm.description}</p>
         )}
 
-        {(farm.owner_name || farm.phone || farm.email) && (
+        {(farm.owner_name || farm.phone || farm.email) ? (
           <div className="flex flex-wrap gap-4 mb-8 bg-stone-50 rounded-xl p-4 border border-stone-200">
             {farm.owner_name && (
               <div className="flex items-center gap-2 text-sm text-stone-700">
@@ -129,9 +161,11 @@ export function FarmProfilePage({ id, onNavigate }: Props) {
               </a>
             )}
           </div>
-        )}
+        ) : null}
 
-        <div className="flex items-center gap-2 mb-4">
+        <ReviewsSection targetType="farm" targetId={farm.id} />
+
+        <div className="flex items-center gap-2 mb-4 mt-8">
           <Package className="w-5 h-5 text-stone-400" />
           <h2 className="text-xl font-bold text-stone-800">Products</h2>
           <span className="text-sm text-stone-500">({listings.length})</span>

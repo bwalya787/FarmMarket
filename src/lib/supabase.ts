@@ -64,3 +64,52 @@ export type ListingWithFarm = Listing & {
   farm: Pick<Farm, 'id' | 'name' | 'location' | 'image_url'> | null;
   category: Pick<Category, 'id' | 'name' | 'slug'> | null;
 };
+
+export type Review = {
+  id: string;
+  target_type: 'listing' | 'farm';
+  target_id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
+export type Message = {
+  id: string;
+  farm_id: string;
+  sender_name: string;
+  sender_email: string;
+  subject: string;
+  body: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+export type Order = {
+  id: string;
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone: string | null;
+  pickup_notes: string | null;
+  status: string;
+  total: number;
+  created_at: string;
+};
+
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  listing_id: string | null;
+  farm_id: string | null;
+  listing_title: string;
+  farm_name: string;
+  unit_price: number;
+  quantity: number;
+  unit: string;
+  subtotal: number;
+};
+
+export type OrderWithItems = Order & {
+  order_items: OrderItem[];
+};

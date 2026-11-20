@@ -8,7 +8,13 @@ export type Route =
   | { name: 'farms' }
   | { name: 'sell' }
   | { name: 'manage' }
-  | { name: 'ads' };
+  | { name: 'ads' }
+  | { name: 'cart' }
+  | { name: 'checkout' }
+  | { name: 'order'; id: string }
+  | { name: 'orders' }
+  | { name: 'watchlist' }
+  | { name: 'messages' };
 
 export function parseHash(hash: string): Route {
   const clean = hash.replace(/^#\/?/, '');
@@ -26,6 +32,12 @@ export function parseHash(hash: string): Route {
   if (segments[0] === 'sell') return { name: 'sell' };
   if (segments[0] === 'manage') return { name: 'manage' };
   if (segments[0] === 'ads') return { name: 'ads' };
+  if (segments[0] === 'cart') return { name: 'cart' };
+  if (segments[0] === 'checkout') return { name: 'checkout' };
+  if (segments[0] === 'order' && segments[1]) return { name: 'order', id: segments[1] };
+  if (segments[0] === 'orders') return { name: 'orders' };
+  if (segments[0] === 'watchlist') return { name: 'watchlist' };
+  if (segments[0] === 'messages') return { name: 'messages' };
   return { name: 'home' };
 }
 
@@ -45,6 +57,12 @@ export function buildHash(route: Route): string {
     case 'sell': return '#/sell';
     case 'manage': return '#/manage';
     case 'ads': return '#/ads';
+    case 'cart': return '#/cart';
+    case 'checkout': return '#/checkout';
+    case 'order': return `#/order/${route.id}`;
+    case 'orders': return '#/orders';
+    case 'watchlist': return '#/watchlist';
+    case 'messages': return '#/messages';
   }
 }
 

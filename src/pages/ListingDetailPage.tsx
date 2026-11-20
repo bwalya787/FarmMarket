@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Phone, Mail, ArrowLeft, Sprout, Tag, ShieldCheck, Package, Store } from 'lucide-react';
-import { supabase, type ListingWithFarm, type Farm, type Listing } from '@/lib/supabase';
+import { MapPin, Phone, Mail, ArrowLeft, Sprout, Tag, ShieldCheck, Package, Store, ShoppingCart, Heart, Plus, Minus } from 'lucide-react';
+import { supabase, type ListingWithFarm, type Farm } from '@/lib/supabase';
 import { type Route, buildHash } from '@/lib/router';
 import { formatPrice, timeAgo } from '@/lib/format';
 import { ListingCard } from '@/components/ListingCard';
+import { ReviewsSection } from '@/components/ReviewsSection';
+import { MessageModal } from '@/components/MessageModal';
+import { WatchButton } from '@/components/WatchButton';
+import { useShop } from '@/lib/shop';
 
 type Props = {
   id: string;
@@ -13,9 +17,11 @@ type Props = {
 export function ListingDetailPage({ id, onNavigate }: Props) {
   const [listing, setListing] = useState<ListingWithFarm | null>(null);
   const [farm, setFarm] = useState<Farm | null>(null);
-  const [related, setRelated] = useState<Listing[]>([]);
+  const [related, setRelated] = useState<ListingWithFarm[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [qty, setQty] = useState(1);
+  const { addToCart } = useShop();
 
   useEffect(() => {
     (async () => {
@@ -81,10 +87,7 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <Sprout className="w-12 h-12 text-stone-300 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-stone-700">Listing not found</h2>
-        <button
-          onClick={() => onNavigate({ name: 'browse' })}
-          className="mt-4 text-green-700 font-medium hover:underline"
-        >
+        <button onClick={() => onNavigate({ name: 'browse' })} className="mt-4 text-green-700 font-medium hover:underline">
           Back to marketplace
         </button>
       </div>
@@ -92,6 +95,21 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
   }
 
   const isAd = listing.ad_tier !== 'none';
+  const inStock = listing.quantity_available > 0;
+
+  const handleAddToCart = () => {
+    if (!farm || !inStock) return;
+    addToCart({
+      listingId: listing.id,
+      title: listing.title,
+      price: listing.price,
+      unit: listing.unit,
+      imageUrl: listing.image_url,
+      farmId: farm.id,
+      farmName: farm.name,
+      maxAvailable: listing.quantity_available,
+    }, qty);
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
@@ -112,7 +130,7 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Image */}
-        <div className="rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 aspect-square">
+        <div className="relative rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 aspect-square">
           {listing.image_url ? (
             <img src={listing.image_url} alt={listing.title} className="w-full h-full object-cover" />
           ) : (
@@ -120,6 +138,11 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
               <Sprout className="w-16 h-16" />
             </div>
           )}
+          <div className="absolute top-3 right-3">
+            <div className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow">
+              <WatchButton id={listing.id} type="listing" title={listing.title} subtitle={farm?.name} imageUrl={listing.image_url} />
+            </div>
+          </div>
         </div>
 
         {/* Info */}
@@ -153,7 +176,7 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
                 <Package className="w-3.5 h-3.5" /> Availability
               </div>
               <p className="font-semibold text-stone-800 text-sm">
-                {listing.quantity_available > 0 ? `${listing.quantity_available} ${listing.unit} available` : 'Sold out'}
+                {inStock ? `${listing.quantity_available} ${listing.unit} available` : 'Sold out'}
               </p>
             </div>
             <div className="bg-stone-50 rounded-lg p-3">
@@ -163,6 +186,27 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
               <p className="font-semibold text-stone-800 text-sm">{timeAgo(listing.created_at)}</p>
             </div>
           </div>
+
+          {/* Add to cart */}
+          {inStock && (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center border border-stone-300 rounded-xl">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-2.5 text-stone-500 hover:text-stone-800">
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="px-3 font-semibold text-stone-800 min-w-[2rem] text-center">{qty}</span>
+                <button onClick={() => setQty((q) => Math.min(listing.quantity_available, q + 1))} className="p-2.5 text-stone-500 hover:text-stone-800">
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-700 text-white rounded-xl font-semibold text-sm hover:bg-green-800 transition-colors"
+              >
+                <ShoppingCart className="w-4 h-4" /> Add to Cart
+              </button>
+            </div>
+          )}
 
           {/* Farm card */}
           {farm && (
@@ -188,26 +232,35 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
             </a>
           )}
 
-          {/* Contact */}
-          {farm && (farm.phone || farm.email) && (
-            <div className="mt-auto bg-green-50 rounded-xl p-4 border border-green-100">
-              <h3 className="font-semibold text-green-800 text-sm mb-3">Contact the farm to buy</h3>
-              <div className="flex flex-wrap gap-3">
-                {farm.phone && (
-                  <a href={`tel:${farm.phone}`} className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-lg border border-green-200 text-sm font-medium text-stone-700 hover:bg-green-100 transition-colors">
-                    <Phone className="w-4 h-4 text-green-700" /> {farm.phone}
-                  </a>
-                )}
-                {farm.email && (
-                  <a href={`mailto:${farm.email}`} className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-lg border border-green-200 text-sm font-medium text-stone-700 hover:bg-green-100 transition-colors">
-                    <Mail className="w-4 h-4 text-green-700" /> Email
-                  </a>
-                )}
-              </div>
+          {/* Contact + Message */}
+          <div className="mt-auto bg-green-50 rounded-xl p-4 border border-green-100 space-y-3">
+            <h3 className="font-semibold text-green-800 text-sm">Contact the farm</h3>
+            <div className="flex flex-wrap gap-2">
+              {farm && (
+                <MessageModal
+                  farmId={farm.id}
+                  farmName={farm.name}
+                  defaultSubject={`Question about ${listing.title}`}
+                  triggerLabel="Send Message"
+                />
+              )}
+              {farm?.phone && (
+                <a href={`tel:${farm.phone}`} className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-lg border border-green-200 text-sm font-medium text-stone-700 hover:bg-green-100 transition-colors">
+                  <Phone className="w-4 h-4 text-green-700" /> {farm.phone}
+                </a>
+              )}
+              {farm?.email && (
+                <a href={`mailto:${farm.email}`} className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-lg border border-green-200 text-sm font-medium text-stone-700 hover:bg-green-100 transition-colors">
+                  <Mail className="w-4 h-4 text-green-700" /> Email
+                </a>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* Reviews */}
+      <ReviewsSection targetType="listing" targetId={listing.id} />
 
       {/* Related */}
       {related.length > 0 && (
@@ -215,7 +268,7 @@ export function ListingDetailPage({ id, onNavigate }: Props) {
           <h2 className="text-xl font-bold text-stone-800 mb-5">More from this category</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {related.map((l) => (
-              <ListingCard key={l.id} listing={l as ListingWithFarm} onNavigate={onNavigate} />
+              <ListingCard key={l.id} listing={l} onNavigate={onNavigate} />
             ))}
           </div>
         </section>

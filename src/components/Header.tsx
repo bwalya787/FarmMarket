@@ -1,6 +1,7 @@
-import { Sprout, Search, Store, LayoutDashboard, Megaphone, Menu, X } from 'lucide-react';
+import { Sprout, Search, Store, LayoutDashboard, Megaphone, Menu, X, ShoppingCart, Heart, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { type Route, buildHash } from '@/lib/router';
+import { useShop } from '@/lib/shop';
 
 type Props = {
   current: Route;
@@ -11,12 +12,13 @@ type Props = {
 
 export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { cartCount, setCartOpen, watchlist } = useShop();
 
   const navItems: { label: string; route: Route; icon: typeof Sprout }[] = [
     { label: 'Marketplace', route: { name: 'browse' }, icon: Store },
     { label: 'Farms', route: { name: 'farms' }, icon: Sprout },
     { label: 'Sell', route: { name: 'sell' }, icon: LayoutDashboard },
-    { label: 'Manage Listings', route: { name: 'manage' }, icon: Megaphone },
+    { label: 'Manage', route: { name: 'manage' }, icon: Megaphone },
   ];
 
   const isActive = (r: Route) => current.name === r.name;
@@ -29,7 +31,7 @@ export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-16 gap-3">
           {/* Logo */}
           <a
             href={buildHash({ name: 'home' })}
@@ -57,8 +59,43 @@ export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
             />
           </div>
 
+          {/* Action icons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => onNavigate({ name: 'watchlist' })}
+              className="relative p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+              title="Watchlist"
+            >
+              <Heart className="w-5 h-5" />
+              {watchlist.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {watchlist.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => onNavigate({ name: 'messages' })}
+              className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors hidden sm:block"
+              title="Messages"
+            >
+              <Mail className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+              title="Cart"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-green-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -82,7 +119,7 @@ export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
           {/* Mobile menu button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-lg text-stone-600 hover:bg-stone-100"
+            className="lg:hidden p-2 rounded-lg text-stone-600 hover:bg-stone-100"
           >
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -90,7 +127,7 @@ export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
 
         {/* Mobile nav */}
         {menuOpen && (
-          <nav className="md:hidden pb-4 flex flex-col gap-1">
+          <nav className="lg:hidden pb-4 flex flex-col gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -109,6 +146,13 @@ export function Header({ current, onNavigate, searchValue, onSearch }: Props) {
                 </a>
               );
             })}
+            <a
+              href={buildHash({ name: 'messages' })}
+              onClick={(e) => { e.preventDefault(); handleNav({ name: 'messages' }); }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-100 sm:hidden"
+            >
+              <Mail className="w-4 h-4" /> Messages
+            </a>
           </nav>
         )}
       </div>
